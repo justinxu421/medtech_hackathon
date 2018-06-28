@@ -26,19 +26,19 @@ def split_data(labels_csv, balanced = False, train_size=0.7, max_rows=4999):
     print(filename_labels[:5])
     print('num experiments is', len(filename_labels))
     
-    # if balanced:
-    #     # downsample all these labels to try to balance the labels
-    #     labels = np.array([x[1] for x in filename_labels])
-    #     i_class0 = np.where(labels == 0)[0]
-    #     i_class1 = np.where(labels == 1)[0]
-    #     i_class2 = np.where(labels == 2)[0]
+    if balanced:
+        # downsample all these labels to try to balance the labels
+        labels = np.array([x[1] for x in filename_labels])
+        i_class0 = np.where(labels == 0)[0]
+        i_class1 = np.where(labels == 1)[0]
+        i_class2 = np.where(labels == 2)[0]
 
-    #     n_class0 = len(i_class0)
-    #     n_class1 = len(i_class1)
+        n_class0 = len(i_class0)
+        n_class1 = len(i_class1)
 
-    #     i_class0_downsampled = np.random.choice(i_class0, size=n_class1, replace=False)
-    #     filenames_indices = np.hstack((i_class0_downsampled, i_class1, i_class2)) 
-    #     filename_labels = [filename_labels[i] for i in range(len(labels)) if i in filenames_indices]
+        i_class0_downsampled = np.random.choice(i_class0, size=n_class1, replace=False)
+        filenames_indices = np.hstack((i_class0_downsampled, i_class1, i_class2)) 
+        filename_labels = [filename_labels[i] for i in range(len(labels)) if i in filenames_indices]
     
 
     train_filenames, test_filenames = train_test_split(filename_labels,

@@ -21,7 +21,7 @@ class XRAY(Dataset):
         self.transform = transforms.Compose([transforms.Resize(360),
                                             transforms.CenterCrop(input_size),
                                             transforms.ToTensor(),
-                                            transforms.Normalize([0.5,0.5,0.5],[0.25,0.25,0.25])])
+                                            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         for filename, label in filename_label_list:
             # construct a path to the image
             self.image_paths.append(osp.join(path, filename))
@@ -32,6 +32,7 @@ class XRAY(Dataset):
         """
         path = self.image_paths[index]
         img_slice = Image.open(path)
+        img_slice = img_slice.convert('RGB')
         img_slice = self.transform(img_slice)
 
         label = self.labels[index]
