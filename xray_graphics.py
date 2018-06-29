@@ -7,7 +7,7 @@ graphics for xray project. Some stolen from babygraphics assignment
 import sys
 import os
 import numpy as np
-# from model_utils import load_saved_model, run_model
+from model_utils import load_saved_model, run_model
 from tkinter import *
 from PIL import ImageTk, Image
 
@@ -22,7 +22,7 @@ SCORE_DICT = dict(stored_scores)
 
 SPACE = 10
 def make_score_list(canvas, scores = sorted(SCORE_DICT.items(), key = lambda x: x[1])[-10:],
-                     idx = None, color = 'blue'):
+                     idx = None, color = 'cyan', raw_index = len(SCORE_DICT) - 10):
     canvas.delete('all')
     width = canvas.winfo_width()
     height = canvas.winfo_height()
@@ -30,7 +30,8 @@ def make_score_list(canvas, scores = sorted(SCORE_DICT.items(), key = lambda x: 
     space_height = height-13
 
     #centerline to separate the columns
-    canvas.create_line(width//2, SPACE, width//2, height-3)
+    canvas.create_line(width//3, SPACE, width//3, height-3)
+    canvas.create_line(2*width//3, SPACE, 2*width//3, height-3)
 
     for i in range(11):
         y0 = i * space_height / 11 + SPACE
@@ -38,18 +39,22 @@ def make_score_list(canvas, scores = sorted(SCORE_DICT.items(), key = lambda x: 
         canvas.create_line(0, y0, width, y0)
         # if the corresponding rectangle is the score, color it
         if i-1 == idx:
-            canvas.create_rectangle(0, y0, width//2, y1, fill = color)
-            canvas.create_rectangle(width//2, y0, width, y1, fill = color)
+            canvas.create_rectangle(0, y0+1, width//3, y1-1, fill = color)
+            canvas.create_rectangle(width//3, y0+1, width*2//3, y1-1, fill = color)
+            canvas.create_rectangle(width*2//3, y0+1, width, y1-1, fill = color)
         # create the name labels if first row
         if i == 0:
-            canvas.create_rectangle(0, y0, width//2, y1, fill = 'orange')
-            canvas.create_rectangle(width//2, y0, width, y1, fill = 'yellow')
-            canvas.create_text(width//4, y0+10, text="Filename")
-            canvas.create_text(3*width//4, y0+10, text="Scores")
+            canvas.create_rectangle(0, y0, width//3, y1, fill = 'orange')
+            canvas.create_rectangle(width//3, y0, width*2//3, y1, fill = 'yellow')
+            canvas.create_rectangle(width*2//3, y0, width, y1, fill = 'red')
+            canvas.create_text(width//6, y0+15, text="Filename")
+            canvas.create_text(width//2, y0+15, text="Scores")
+            canvas.create_text(5*width//6, y0+15, text="Percentile")
         # otherwise insert the data
         else:
-            canvas.create_text(width//4, y0+10, text=str(scores[i-1][0]))
-            canvas.create_text(3*width//4, y0+10, text=str(scores[i-1][1]))
+            canvas.create_text(width//6, y0+15, text=str(scores[i-1][0]))
+            canvas.create_text(width//2, y0+15, text=str(scores[i-1][1]))
+            canvas.create_text(width*5//6, y0+15, text=str(round(100* (raw_index+i) / len(SCORE_DICT),3)))
 
     y0 = 11 * space_height / 11 + SPACE
     canvas.create_line(0, y0, width, y0)
@@ -63,8 +68,16 @@ def make_gui(top, width, height, vision_model):
     # size of the image
     size = min(width,height)
 
+    # image
+    image = Image.open("logo.jpg")
+    image = image.resize((80,60), Image.ANTIALIAS)
+    img = ImageTk.PhotoImage(image)
+    panel = Label(top, image = img, borderwidth=2)
+    panel.image = img
+    panel.grid(row=1, column=0, padx=10, pady=10, columnspan = 2, sticky = 'w')
+
     # header 
-    space = Label(top, font=("Courrier",14), text = "Doctor X", height=3, borderwidth=0)
+    space = Label(top, font=("Courrier", 14, 'bold'), text = "Doctor X", height=3, borderwidth=0)
     space.grid(row=1, columnspan=12)
 
     # label and name entry field to enter filename
@@ -73,7 +86,8 @@ def make_gui(top, width, height, vision_model):
     entry = Entry(top, width=50, name='entry', borderwidth=2)
     entry.grid(row=2, column=1)
 
-    score_label = Label(top, font=("Courrier", 12), text="Your Score:")
+    score_label = Label(top, font=("Courrier", 12, 'bold'), highlightcolor = "black", 
+                        highlightthickness = 4, text="Your Score:")
     score_label.grid(row=2, column=3, columnspan = 6, padx=10)
 
     space2 = LabelFrame(top, width=20, height=20, borderwidth=0)
@@ -113,6 +127,7 @@ def make_gui(top, width, height, vision_model):
 # get scores in close proximity to the score of the current filename
 def get_proximity_scores(filename):
     # sort the items by score
+    global SCORE_DICT
     score = SCORE_DICT[filename]
     sorted_scores = sorted(SCORE_DICT.items(), key = lambda x: x[1])
     idx = sorted_scores.index((filename, score))
@@ -122,16 +137,16 @@ def get_proximity_scores(filename):
     if score > 1:
         color = 'red'
     elif score > 0.5:
-        color = 'blue'
+        color = 'navy'
     else:
         color = 'green'
 
     if idx < 5:
-        return sorted_scores[:10], idx, color 
+        return sorted_scores[:10], idx, color, -1
     elif idx > len(sorted_scores) - 5:
-        return sorted_scores[-10:], 10 - (len(sorted_scores) - idx), color
+        return sorted_scores[-10:], 10 - (len(sorted_scores) - idx), color, len(SCORE_DICT)-10
     else:
-        return sorted_scores[idx-5:idx+5], 5, color 
+        return sorted_scores[idx-5:idx+5], 5, color, idx 
 
 def handle_draw(entry, panel, canvas, xray_label, score_label, vision_model):
     """
@@ -140,7 +155,7 @@ def handle_draw(entry, panel, canvas, xray_label, score_label, vision_model):
     to the given canvas.
     """
     global FILENAMES
-    filename = entry.get()
+    filename = entry.get().strip()
     width = canvas.winfo_width()
     height = canvas.winfo_height()
     size = min(width, height)
@@ -162,13 +177,13 @@ def handle_draw(entry, panel, canvas, xray_label, score_label, vision_model):
         if filename not in SCORE_DICT:
             SCORE_DICT[filename] = score
         # get the 10 scores in proximity to the calculated one
-        scores, idx, color = get_proximity_scores(filename)
+        scores, idx, color, percentile = get_proximity_scores(filename)
         score_label.configure(fg=color, text = "Your Score: {}".format(str(score)))
-        make_score_list(canvas, scores, idx, color)
+        make_score_list(canvas, scores, idx, color, percentile)
 
     else:
         image = Image.open("images/no_image.png")
-        image = image.resize((300,300), Image.ANTIALIAS)
+        image = image.resize((size,size), Image.ANTIALIAS)
         img = ImageTk.PhotoImage(image)
         panel.configure(image=img)
         panel.image = img
@@ -222,17 +237,13 @@ def main():
     top.wm_title('XRAY scores')
 
     # initializes the model
-    # vision_model = load_saved_model() 
-    vision_model = None
+    vision_model = load_saved_model() 
+    # vision_model = None
 
     # make the gui
     make_gui(top, width, height, vision_model)
 
-    # draw_fixed once at startup so we have the lines
-    # even before the user types anything.
-    # draw_fixed(canvas)
     top.mainloop()
-
 
 if __name__ == '__main__':
     main()
